@@ -378,6 +378,7 @@ data_county = normalize_data(data_county, means, stds)
 
 # split the data into training and testing data sets
 train_data, test_data = split_data(data, years_to_predict)
+toto, data_county = split_data(data_county, years_to_predict)
 
 # remove classification data, County not present for state analysis
 states = train_data['State'].values
@@ -480,4 +481,49 @@ pl.title('Suicide Rate Prediction by County - {0:s}'.format(years_to_predict),
 if show_plots:
     pl.show()
 else:
-    pl.close(all)
+    pl.close('all')
+
+
+
+import json
+import geopandas as gpd
+#import ast
+
+# US Counties GeoJSON
+# with python 3
+# geojson=open('us_counties_high_detail.json', 'r', encoding = "ISO-8859-1").read()
+geojson=open('us_counties_high_detail_python2.json', 'r').read()
+counties_geojson = json.loads(geojson)["features"]
+
+# load the county definitions
+df_counties = gpd.GeoDataFrame.from_features(counties_geojson)
+df_counties=df_counties[ df_counties.STATE!='02' ] #drop Alaska
+df_counties=df_counties[ df_counties.STATE!='15' ] #drop Hawaii
+df_counties=df_counties[ df_counties.STATE!='72' ] #drop Puerto Rico
+df_counties.set_index(['STATE','COUNTY'],inplace=True)
+df_counties.sort_index(inplace=True)
+
+# creates new dataframe for map
+fips = data_county['FIPS'].values.astype(int).astype(str)
+state_num = []
+county_num = []
+for fip in fips:
+    county_num.append('{0:03d}'.format(int(fip[-3:])))
+    state_num.append('{0:02d}'.format(int(fip[:-3])))
+new_df = pd.DataFrame({'STATE': state_num,
+                       'COUNTY': county_num,
+                       'RATE': predicted_county},
+                       columns=['STATE', 'COUNTY', 'RATE'])
+# formating index
+new_df = new_df.set_index(['STATE','COUNTY'])
+
+# plotting map
+df_counties.join(new_df).fillna(0).plot(
+                    figsize=(20, 20),
+                    column='RATE',
+                    cmap='OrRd', # http://matplotlib.org/users/colormaps.html
+                    #scheme='Quantiles', # alternatives are 'Quantiles', Equal_Interval', and 'Fisher_Jenks'
+                    linewidth=0.1,
+                    edgecolor='black')
+pl.show()
+exit()
