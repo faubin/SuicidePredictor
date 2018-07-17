@@ -3,9 +3,6 @@ import copy
 import pandas as pd
 import pylab as pl
 import seaborn
-# model 1
-from sklearn import linear_model
-# model 2
 import statsmodels.api as sm
 
 
@@ -85,6 +82,8 @@ def select_health_files_to_load(years_to_analyze, path='downloads'):
 
 def load_data(files, state_or_county, path='downloads/'):
     """
+    load all the databases in file anc combines them. Only keeps the state of
+    the county data. Return a pandas.DataFrame.
     """
     for n_file, file_ in enumerate(files):
         # loading a database
@@ -93,7 +92,7 @@ def load_data(files, state_or_county, path='downloads/'):
         new_df = pd.read_excel(xls, 'Ranked Measure Data', header=1)
 
         # droping empty lines
-        #new_df = new_df.dropna(how='all')  # leaves the last empty line...
+        # new_df = new_df.dropna(how='all')  # leaves the last empty line...
         new_df = new_df.drop(pl.where(pd.isnull(new_df["FIPS"].values))[0])
 
         # adding the year to the data
@@ -111,11 +110,15 @@ def load_data(files, state_or_county, path='downloads/'):
 
     if state_or_county == 'county':
         df = df.drop(pl.where(pd.isnull(df["County"]).values)[0])
+        print("Dropping District of Columbia because it is its own county")
+        df = df.reset_index(drop=True)
+        df = df.drop(pl.where(df["State"].values == 'District of Columbia')[0])
     elif state_or_county == 'state':
         df = df.drop(pl.where(~pd.isnull(df["County"]).values)[0])
     else:
         error_text = 'Only "state" or "county supported. You nentered '
         error_text += '{0:s}'.format(state_or_county)
+
     # reset index
     df = df.reset_index(drop=True)
     return df
@@ -123,6 +126,7 @@ def load_data(files, state_or_county, path='downloads/'):
 
 def exclude_redundant_data(df):
     """
+    Only keeps some data columns since most are redundant with each other.
     """
     keys_to_analyze = ['Year',
                        'FIPS',
@@ -159,16 +163,24 @@ def exclude_redundant_data(df):
                        'Violent Crime Rate',
                        'Injury Death Rate',
                        'Average Daily PM2.5',
-                       'Presence of violation',  # boolean
+                       # 'Presence of violation',  # boolean
                        '% Severe Housing Problems',
                        '% Drive Alone',
                        '% Long Commute - Drives Alone',
                        ]
+    # 2014 column names need to be changed to match 2015 and 2016
+    # if 'Long Commute - Drives Alone' in df.keys():
+    #     old_key = 'Long Commute - Drives Alone'
+    #     new_key = '% Long Commute - Drives Alone'
+    #     df = df.rename(columns={old_key: })
+    # import pdb;pdb.set_trace()
+    df = df.reset_index(drop=True)
     return df[keys_to_analyze]
 
 
 def add_suicide_data(df, path='downloads'):
     """
+    Load the suicide database and add a column to the data
     """
     # adding empty data
     df['Suicide'] = pd.Series(pl.nan*pl.ones(len(df.index)), index=df.index)
@@ -214,7 +226,7 @@ def add_suicide_data(df, path='downloads'):
 
 def clean_data(df):
     """
-    remove columns fron dataframe qhich are undefined, then remove rows with
+    remove columns fron dataframe which are undefined, then remove rows with
     missing elements
     """
     # remove empty columns
@@ -228,6 +240,7 @@ def clean_data(df):
 
 def visualize_data(df, show_plots=True):
     """
+    Correlation plot between all columns
     """
     pl.figure(1, figsize=(12, 9))
     pl.axes([0.25, 0.3, 0.95-0.25, 0.95-0.3])
@@ -242,117 +255,227 @@ def visualize_data(df, show_plots=True):
     return
 
 
-################################################################################
+def split_data(df, pred_years):
+    """
+    Splits df into two dataframes: the testing data for all years in
+    pred_years (list), and the rest for training
+    """
+    # indexes of all rows for the years in pred_years
+    test_index = pl.array([])
+    for year in pred_years:
+        index = pl.where(df['Year'].values == year)[0]
+        test_index = pl.append(test_index, index)
+
+    # splitting the data
+    test_df = df.ix[index]
+    train_df = copy.deepcopy(df).drop(index)
+    return train_df, test_df
+
+
+def remove_keys(df):
+    """
+    Remove the non-numerical columns
+    """
+    for key_ in ['Year', 'FIPS', 'State', 'County']:
+        if key_ in df.keys():
+            df = df.drop([key_], axis=1)
+    return df
+
+
+def normalize_data(df, means=None, stds=None):
+    """
+    X -> (X - Xbar) / Xstd
+    if means or stds not provided, they are calculated and returned as dict,
+    otherwize they are float
+    """
+    string_keys = ['Year', 'FIPS', 'State', 'County']
+    keys = [key_ for key_ in df.keys() if key_ not in string_keys]
+    if means is None or stds is None:
+        means = {}
+        stds = {}
+        for key_ in keys:
+            means[key_] = pl.mean(df[key_].values)
+            stds[key_] = pl.std(df[key_].values)
+            df[key_] = pd.Series((df[key_] - means[key_]) / stds[key_],
+                                 index=df.index)
+        return df, means, stds
+    else:
+        for key_ in keys:
+            df[key_] = pd.Series((df[key_] - means[key_]) / stds[key_],
+                                 index=df.index)
+        return df
+
+
+def denormalize(X, mean, std):
+    """
+    Reciprocal function of the normalization function
+    """
+    return X * std + mean
+
+
+def combine_county_per_state(data, states_county):
+    """
+    Create a matrix where each row is a state and column a county (pl.nan when
+    the state is out of county)
+    *** this function needs to be optimized
+    """
+    states = sorted(set(states_county))
+
+    # adding all the values in a matric
+    data_matrix = []
+    max_columns = 0
+    for n_state, state in enumerate(states):
+        index = pl.where(states_county == state)[0]
+        data_matrix.append(data[index])
+        if len(index) > max_columns:
+            max_columns = len(index)
+
+    # filling up the array so all rows have the same # of columns
+    for n_state in range(len(states)):
+        n_to_add = max_columns - len(data_matrix[n_state])
+        data_matrix[n_state] = pl.append(data_matrix[n_state],
+                                         pl.nan*pl.ones(n_to_add))
+    return data_matrix
+
+
+# ##############################################################################
 # Parameters
-################################################################################
-years_to_analyze = [2016]
-state_or_county = 'state'
+# ##############################################################################
+# years_to_analyze = [2016]
+# years_to_analyze = [2014]
+# years_to_analyze = range(2014, 2017)
+years_to_analyze = range(2015, 2017)
+years_to_predict = [2016]  # must be included in years_to_analyze
 # show_plots = True
 show_plots = False
 
-################################################################################
+# ##############################################################################
 # Loading and handling the data
-################################################################################
+# ##############################################################################
 # selects the Health databases
 files = select_health_files_to_load(years_to_analyze)
 # load raw database
-data = load_data(files, state_or_county)
+data = load_data(files, 'state')
+data_county = load_data(files, 'county')
 # select columns
 data = exclude_redundant_data(data)
+data_county = exclude_redundant_data(data_county)
 # add a column for suicide rate
 data = add_suicide_data(data)
 # remove columns and rows with important data missing
 data = clean_data(data)
+data_county = clean_data(data_county)
 
 # show the raw data
 visualize_data(data, show_plots)
 
-################################################################################
+# ##############################################################################
 # Modeling
-################################################################################
+# ##############################################################################
+# normalize the data
+data, means, stds = normalize_data(data)
+data_county = normalize_data(data_county, means, stds)
+
+# split the data into training and testing data sets
+train_data, test_data = split_data(data, years_to_predict)
+
 # remove classification data, County not present for state analysis
-model_data = copy.deepcopy(data)
-states = model_data['State'].values
-for key_ in ['Year', 'FIPS', 'State', 'County']:
-    if key_ in model_data.keys():
-        model_data = model_data.drop([key_], axis=1)
-
-# normalizing
-means = {}
-stds = {}
-for key_ in model_data.keys():
-    means[key_] = pl.mean(model_data[key_].values)
-    stds[key_] = pl.std(model_data[key_].values)
-    model_data[key_] = pd.Series((model_data[key_] - means[key_]) / stds[key_],
-                          index=model_data.index)
-
-#model_data = model_data.dropna(axis=1, how='any')
-
-X = model_data.as_matrix()
-Y = X[:, -1]
-X = X[:, :-1]
-
-#x_train=input_variables_values_training_datasets
-#y_train=target_variables_values_training_datasets
-#x_test=input_variables_values_test_datasets
-
-# Create linear regression object
-#linear = linear_model.LinearRegression()
-
-# Train the model using the training sets and check score
-#linear.fit(x_train, y_train)
-#linear.score(x_train, y_train)
-#linear.fit(X, Y)
-#linear.score(X, Y)
-#Equation coefficient and Intercept
-#print('Coefficient: \n', linear.coef_)
-#print('Intercept: \n', linear.intercept_)
-#Predict Output
-#predicted= linear.predict(X)
+states = train_data['State'].values
+train_data = remove_keys(train_data)
+test_data = remove_keys(test_data)
+states_county = data_county['State'].values
+county = remove_keys(data_county)
 
 
-model = sm.OLS(Y, X)
+# formating the data for the model
+X_train = train_data.as_matrix()
+Y_train = X_train[:, -1]
+X_train = X_train[:, :-1]
+X_test = test_data.as_matrix()
+Y_test = X_test[:, -1]
+X_test = X_test[:, :-1]
+X_county = county.as_matrix()
+
+# model - linear regression
+model = sm.OLS(Y_train, X_train)
 results = model.fit()
-print results.params
-print results.tvalues
-predicted = model.predict(results.params, X)
+# data prediction and cross-check
+predicted_train = model.predict(results.params, X_train)
+predicted_test = model.predict(results.params, X_test)
+predicted_county = model.predict(results.params, X_county)
 
-param_names = list(model_data.keys().values)
+# printing the results
+param_names = list(train_data.keys().values)
 param_names.remove('Suicide')
 print('\n{0:35s}: {1:7s} {2:7s}'.format('parameter name', 'value', 'p-value'))
 for i in range(len(param_names)):
-    print('{0:35s}: {1:7.4f} {2:7.4f}'.format(param_names[i], results.params[i], results.pvalues[i]))
+    print('{0:35s}: {1:7.4f} {2:7.4f}'.format(param_names[i],
+                                              results.params[i],
+                                              results.pvalues[i]))
 
-# denormalizing
-Y = Y * stds['Suicide'] + means['Suicide']
-predicted = predicted * stds['Suicide'] + means['Suicide']
+# de-normalizing
+Y_train = denormalize(Y_train, means['Suicide'], stds['Suicide'])
+predicted_train = denormalize(predicted_train, means['Suicide'],
+                              stds['Suicide'])
+Y_test = denormalize(Y_test, means['Suicide'], stds['Suicide'])
+predicted_test = denormalize(predicted_test, means['Suicide'], stds['Suicide'])
+predicted_county = denormalize(predicted_county, means['Suicide'],
+                               stds['Suicide'])
 
-# plotting results vs data
-pl.plot(Y, predicted, '.b')
-#if show_plots:
-#    pl.show()
-#else:
-#    pl.close('all')
+# plotting results
+pl.figure(2)
+# training data
+label_train = 'training data ('
+for year in pl.setdiff1d(years_to_analyze, years_to_predict):
+    label_train += '{0:d}, '.format(year)
+label_train = label_train[:-2] + ')'
+pl.plot(Y_train, predicted_train, '.b', label=label_train)
+# testing data
+label_test = 'testing data ('
+for year in years_to_predict:
+    label_test += '{0:d}, '.format(year)
+label_test = label_test[:-2] + ')'
+pl.plot(Y_test, predicted_test, '.r', label=label_test)
+# formating
+max_ = 5. * pl.ceil(max([max(Y_train), max(predicted_train),
+                         max(Y_test), max(predicted_test)]) / 5.)
+pl.plot([0., max_], [0., max_], 'g', label='perfect model')
+pl.xlim([0., max_])
+pl.xlabel('Suicides per 100,000 people', fontsize=16)
+pl.xticks(fontsize=12)
+pl.ylim([0., max_])
+pl.ylabel('Predicted suicides per 100,000 people', fontsize=16)
+pl.yticks(fontsize=12)
+pl.title('Model of the Suicide Rate', fontsize=20)
+pl.legend(loc=2, prop={'size': 12})
 
-
-
-
-pl.figure(3, figsize=(8, 12))
+# plottingpredictions by state
+fig = pl.figure(3, figsize=(16, 12))
 pl.subplot(121)
-Y_to_plot = [[i] for i in Y]
-ax1 = seaborn.heatmap(Y_to_plot, cbar=False)
+Y_to_plot = [[i] for i in predicted_test]
+ax1 = seaborn.heatmap(Y_to_plot, cbar=True,
+                      cbar_kws=dict(use_gridspec=False, location="bottom"),
+                      vmin=0, vmax=max_)
 pl.yticks(rotation=0)
 ax1.set_yticklabels(states)
 ax1.set_xticklabels([])
 pl.xlabel("State")
+pl.title('Suicide Rate Prediction by State - {0:s}'.format(years_to_predict),
+         fontsize=18)
 
+# plotting prediction by county
 pl.subplot(122)
-predicted_to_plot = [[i] for i in predicted]
-ax2 = seaborn.heatmap(predicted_to_plot)
-ax2.set_yticklabels([])
+county_to_plot = combine_county_per_state(predicted_county, states_county)
+ax2 = seaborn.heatmap(county_to_plot, cbar=True,
+                      cbar_kws=dict(use_gridspec=False, location="bottom"),
+                      vmin=0, vmax=max_)
+pl.yticks(rotation=0)
+ax2.set_yticklabels(sorted(set(states_county)))
 ax2.set_xticklabels([])
-pl.xlabel("County")
-
-print("Check if my Y and states are inverted...")
-pl.show()
-
+pl.xlabel("County # per state")
+pl.title('Suicide Rate Prediction by County - {0:s}'.format(years_to_predict),
+         fontsize=18)
+if show_plots:
+    pl.show()
+else:
+    pl.close(all)
