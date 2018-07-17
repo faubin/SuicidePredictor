@@ -454,7 +454,8 @@ fig = pl.figure(3, figsize=(16, 12))
 pl.subplot(121)
 Y_to_plot = [[i] for i in predicted_test]
 ax1 = seaborn.heatmap(Y_to_plot, cbar=True,
-                      cbar_kws=dict(use_gridspec=False, location="bottom"),
+                      cbar_kws=dict(use_gridspec=False, location="bottom",
+                                    label='Suicide rate per 100,000 people'),
                       vmin=0, vmax=max_)
 pl.yticks(rotation=0)
 ax1.set_yticklabels(states)
@@ -467,7 +468,8 @@ pl.title('Suicide Rate Prediction by State - {0:s}'.format(years_to_predict),
 pl.subplot(122)
 county_to_plot = combine_county_per_state(predicted_county, states_county)
 ax2 = seaborn.heatmap(county_to_plot, cbar=True,
-                      cbar_kws=dict(use_gridspec=False, location="bottom"),
+                      cbar_kws=dict(use_gridspec=False, location="bottom",
+                                    label='Suicide rate per 100,000 people'),
                       vmin=0, vmax=max_)
 pl.yticks(rotation=0)
 ax2.set_yticklabels(sorted(set(states_county)))
