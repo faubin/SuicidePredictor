@@ -4,6 +4,8 @@ import pandas as pd
 import pylab as pl
 import seaborn
 import statsmodels.api as sm
+import json
+import geopandas as gpd
 
 
 def convert_st_to_state(st):
@@ -238,7 +240,7 @@ def clean_data(df):
     return df
 
 
-def visualize_data(df, show_plots=True):
+def visualize_data(df):
     """
     Correlation plot between all columns
     """
@@ -248,10 +250,6 @@ def visualize_data(df, show_plots=True):
     pl.yticks(rotation=0, fontsize=12)
     pl.xticks(rotation=90, fontsize=12)
     pl.title("Correlation between the data", fontsize=24)
-    if show_plots:
-        pl.show()
-    else:
-        pl.close(1)
     return
 
 
@@ -346,8 +344,8 @@ def combine_county_per_state(data, states_county):
 # years_to_analyze = range(2014, 2017)
 years_to_analyze = range(2015, 2017)
 years_to_predict = [2016]  # must be included in years_to_analyze
-# show_plots = True
-show_plots = False
+show_plots = True
+# show_plots = False
 
 # ##############################################################################
 # Loading and handling the data
@@ -367,7 +365,7 @@ data = clean_data(data)
 data_county = clean_data(data_county)
 
 # show the raw data
-visualize_data(data, show_plots)
+visualize_data(data)
 
 # ##############################################################################
 # Modeling
@@ -414,6 +412,9 @@ for i in range(len(param_names)):
                                               results.params[i],
                                               results.pvalues[i]))
 
+# ##############################################################################
+# Plotting
+# ##############################################################################
 # de-normalizing
 Y_train = denormalize(Y_train, means['Suicide'], stds['Suicide'])
 predicted_train = denormalize(predicted_train, means['Suicide'],
@@ -450,7 +451,7 @@ pl.yticks(fontsize=12)
 pl.title('Model of the Suicide Rate', fontsize=20)
 pl.legend(loc=2, prop={'size': 12})
 
-# plottingpredictions by state
+# plotting predictions by state
 fig = pl.figure(3, figsize=(16, 12))
 pl.subplot(121)
 Y_to_plot = [[i] for i in predicted_test]
@@ -478,30 +479,20 @@ ax2.set_xticklabels([])
 pl.xlabel("County # per state")
 pl.title('Suicide Rate Prediction by County - {0:s}'.format(years_to_predict),
          fontsize=18)
-if show_plots:
-    pl.show()
-else:
-    pl.close('all')
-
-
-
-import json
-import geopandas as gpd
-#import ast
 
 # US Counties GeoJSON
-# with python 3
-# geojson=open('us_counties_high_detail.json', 'r', encoding = "ISO-8859-1").read()
-geojson=open('us_counties_high_detail_python2.json', 'r').read()
+# geojson=open('us_counties_high_detail.json', 'r',
+#              encoding="ISO-8859-1").read()  # python 3
+geojson = open('us_counties_high_detail_python2.json', 'r').read()  # python 2
 counties_geojson = json.loads(geojson)["features"]
 
 # load the county definitions
 df_counties = gpd.GeoDataFrame.from_features(counties_geojson)
-df_counties=df_counties[ df_counties.STATE!='02' ] #drop Alaska
-df_counties=df_counties[ df_counties.STATE!='15' ] #drop Hawaii
-df_counties=df_counties[ df_counties.STATE!='72' ] #drop Puerto Rico
-df_counties.set_index(['STATE','COUNTY'],inplace=True)
-df_counties.sort_index(inplace=True)
+df_counties = df_counties[df_counties.STATE != '02']  # drop Alaska
+df_counties = df_counties[df_counties.STATE != '15']  # drop Hawaii
+df_counties = df_counties[df_counties.STATE != '72']  # drop Puerto Rico
+df_counties = df_counties.set_index(['STATE', 'COUNTY'])
+df_counties = df_counties.sort_index()
 
 # creates new dataframe for map
 fips = data_county['FIPS'].values.astype(int).astype(str)
@@ -510,20 +501,17 @@ county_num = []
 for fip in fips:
     county_num.append('{0:03d}'.format(int(fip[-3:])))
     state_num.append('{0:02d}'.format(int(fip[:-3])))
-new_df = pd.DataFrame({'STATE': state_num,
-                       'COUNTY': county_num,
+df_map = pd.DataFrame({'STATE': state_num, 'COUNTY': county_num,
                        'RATE': predicted_county},
-                       columns=['STATE', 'COUNTY', 'RATE'])
+                      columns=['STATE', 'COUNTY', 'RATE'])
 # formating index
-new_df = new_df.set_index(['STATE','COUNTY'])
+df_map = df_map.set_index(['STATE', 'COUNTY'])
 
 # plotting map
-df_counties.join(new_df).fillna(0).plot(
-                    figsize=(20, 20),
-                    column='RATE',
-                    cmap='OrRd', # http://matplotlib.org/users/colormaps.html
-                    #scheme='Quantiles', # alternatives are 'Quantiles', Equal_Interval', and 'Fisher_Jenks'
-                    linewidth=0.1,
-                    edgecolor='black')
-pl.show()
-exit()
+df_counties.join(df_map).fillna(0).plot(figsize=(20, 20), column='RATE',
+                                        cmap='OrRd', legend=True, vmin=0.,
+                                        linewidth=0.1, edgecolor='black')
+if show_plots:
+    pl.show()
+else:
+    pl.close('all')
