@@ -315,7 +315,7 @@ predicted_county = model.predict(results.params, X_county)
 param_names = list(train_data.keys().values)
 param_names.remove('Suicide')
 print('\n{0:35s}: {1:7s} {2:7s}'.format('parameter name', 'value', 'p-value'))
-for i in range(len(param_names)):
+for i in pl.argsort(results.pvalues):
     print('{0:35s}: {1:7.4f} {2:7.4f}'.format(param_names[i],
                                               results.params[i],
                                               results.pvalues[i]))
