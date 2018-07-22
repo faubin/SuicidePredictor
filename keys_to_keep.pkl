@@ -1,0 +1,78 @@
+(lp0
+S'Year'
+p1
+aS'FIPS'
+p2
+aS'State'
+p3
+aS'County'
+p4
+aS'Years of Potential Life Lost Rate'
+p5
+aS'% Fair/Poor'
+p6
+aS'Physically Unhealthy Days'
+p7
+aS'Mentally Unhealthy Days'
+p8
+aS'% LBW'
+p9
+aS'% Smokers'
+p10
+aS'% Obese'
+p11
+aS'Food Environment Index'
+p12
+aS'% Physically Inactive'
+p13
+aS'% With Access'
+p14
+aS'% Excessive Drinking'
+p15
+aS'% Alcohol-Impaired'
+p16
+aS'Chlamydia Rate'
+p17
+aS'Teen Birth Rate'
+p18
+aS'% Uninsured'
+p19
+aS'PCP Rate'
+p20
+aS'Dentist Rate'
+p21
+aS'MHP Rate'
+p22
+aS'Preventable Hosp. Rate'
+p23
+aS'% Receiving HbA1c'
+p24
+aS'% Mammography'
+p25
+aS'Graduation Rate'
+p26
+aS'% Some College'
+p27
+aS'% Unemployed'
+p28
+aS'% Children in Poverty'
+p29
+aS'Income Ratio'
+p30
+aS'% Single-Parent Households'
+p31
+aS'Association Rate'
+p32
+aS'Violent Crime Rate'
+p33
+aS'Injury Death Rate'
+p34
+aS'Average Daily PM2.5'
+p35
+aS'% Severe Housing Problems'
+p36
+aS'% Drive Alone'
+p37
+aS'% Long Commute - Drives Alone'
+p38
+a.

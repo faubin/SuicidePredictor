@@ -84,52 +84,9 @@ def exclude_redundant_data(df):
     """
     Only keeps some data columns since most are redundant with each other.
     """
-    keys_to_analyze = ['Year',
-                       'FIPS',
-                       'State',
-                       'County',
-                       'Years of Potential Life Lost Rate',
-                       '% Fair/Poor',
-                       'Physically Unhealthy Days',
-                       'Mentally Unhealthy Days',
-                       '% LBW',
-                       '% Smokers',
-                       '% Obese',
-                       'Food Environment Index',
-                       '% Physically Inactive',
-                       '% With Access',
-                       '% Excessive Drinking',
-                       '% Alcohol-Impaired',
-                       'Chlamydia Rate',
-                       'Teen Birth Rate',
-                       '% Uninsured',
-                       'PCP Rate',
-                       'Dentist Rate',
-                       'MHP Rate',
-                       'Preventable Hosp. Rate',
-                       '% Receiving HbA1c',
-                       '% Mammography',
-                       'Graduation Rate',
-                       '% Some College',
-                       '% Unemployed',
-                       '% Children in Poverty',
-                       'Income Ratio',
-                       '% Single-Parent Households',
-                       'Association Rate',
-                       'Violent Crime Rate',
-                       'Injury Death Rate',
-                       'Average Daily PM2.5',
-                       # 'Presence of violation',  # boolean
-                       '% Severe Housing Problems',
-                       '% Drive Alone',
-                       '% Long Commute - Drives Alone',
-                       ]
-    # 2014 column names need to be changed to match 2015 and 2016
-    # if 'Long Commute - Drives Alone' in df.keys():
-    #     old_key = 'Long Commute - Drives Alone'
-    #     new_key = '% Long Commute - Drives Alone'
-    #     df = df.rename(columns={old_key: })
-    # import pdb;pdb.set_trace()
+    f = open('keys_to_keep.pkl', 'r')
+    keys_to_analyze = pickle.load(f)
+    f.close()
     df = df.reset_index(drop=True)
     return df[keys_to_analyze]
 
