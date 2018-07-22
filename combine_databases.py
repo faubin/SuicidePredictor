@@ -363,6 +363,9 @@ for i in range(len(param_names)):
                                               results.params[i],
                                               results.pvalues[i]))
 
+f = open('data_county_map.pkl', 'w')
+pickle.dump({'data_county': data_county, 'pred_county': predicted_county}, f)
+f.close()
 # ##############################################################################
 # Plotting
 # ##############################################################################
@@ -374,6 +377,12 @@ Y_test = denormalize(Y_test, means['Suicide'], stds['Suicide'])
 predicted_test = denormalize(predicted_test, means['Suicide'], stds['Suicide'])
 predicted_county = denormalize(predicted_county, means['Suicide'],
                                stds['Suicide'])
+f = open('model_data.pkl', 'w')
+pickle.dump({'Ytrain': Y_train, 'pred_train': predicted_train,
+             'Ytest': Y_test, 'pred_test': predicted_test,
+             'years_anal': years_to_analyze, 'years_pred': years_to_predict,},
+             f)
+f.close()
 
 # plotting results
 pl.figure(2)

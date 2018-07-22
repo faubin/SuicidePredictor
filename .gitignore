@@ -105,3 +105,5 @@ venv.bak/
 
 # specific files for this project
 downloads/
+data_county_map.pkl
+model_data.pkl
