@@ -6,62 +6,16 @@ import seaborn
 import statsmodels.api as sm
 import json
 import geopandas as gpd
+import pickle
 
 
 def convert_st_to_state(st):
     """
     Returns the state name (string) from the state abreviation (string)
     """
-    us_state_abbrev = {'AL': 'Alabama',
-                       'AK': 'Alaska',
-                       'AZ': 'Arizona',
-                       'AR': 'Arkansas',
-                       'CA': 'California',
-                       'CO': 'Colorado',
-                       'CT': 'Connecticut',
-                       'DE': 'Delaware',
-                       'FL': 'Florida',
-                       'GA': 'Georgia',
-                       'HI': 'Hawaii',
-                       'ID': 'Idaho',
-                       'IL': 'Illinois',
-                       'IN': 'Indiana',
-                       'IA': 'Iowa',
-                       'KS': 'Kansas',
-                       'KY': 'Kentucky',
-                       'LA': 'Louisiana',
-                       'ME': 'Maine',
-                       'MD': 'Maryland',
-                       'MA': 'Massachusetts',
-                       'MI': 'Michigan',
-                       'MN': 'Minnesota',
-                       'MS': 'Mississippi',
-                       'MO': 'Missouri',
-                       'MT': 'Montana',
-                       'NE': 'Nebraska',
-                       'NV': 'Nevada',
-                       'NH': 'New Hampshire',
-                       'NJ': 'New Jersey',
-                       'NM': 'New Mexico',
-                       'NY': 'New York',
-                       'NC': 'North Carolina',
-                       'ND': 'North Dakota',
-                       'OH': 'Ohio',
-                       'OK': 'Oklahoma',
-                       'OR': 'Oregon',
-                       'PA': 'Pennsylvania',
-                       'RI': 'Rhode Island',
-                       'SC': 'South Carolina',
-                       'SD': 'South Dakota',
-                       'TN': 'Tennessee',
-                       'TX': 'Texas',
-                       'UT': 'Utah',
-                       'VT': 'Vermont',
-                       'VA': 'Virginia',
-                       'WA': 'Washington',
-                       'WV': 'West Virginia',
-                       'WI': 'Wisconsin',
-                       'WY': 'Wyoming'}
+    f = open('us_state_abbrev.pkl', 'r')
+    us_state_abbrev = pickle.load(f)
+    f.close()
     if st not in us_state_abbrev.keys():
         error_text = 'No state matches {0:s}'.format(st)
         raise ValueError(error_text)
@@ -339,9 +293,6 @@ def combine_county_per_state(data, states_county):
 # ##############################################################################
 # Parameters
 # ##############################################################################
-# years_to_analyze = [2016]
-# years_to_analyze = [2014]
-# years_to_analyze = range(2014, 2017)
 years_to_analyze = range(2015, 2017)
 years_to_predict = [2016]  # must be included in years_to_analyze
 show_plots = True
