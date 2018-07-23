@@ -367,6 +367,7 @@ pl.ylabel('Predicted suicides per 100,000 people', fontsize=16)
 pl.yticks(fontsize=12)
 pl.title('Model of the Suicide Rate', fontsize=20)
 pl.legend(loc=2, prop={'size': 12})
+pl.savefig('SuicidePred_model.png')
 
 # plotting predictions by state
 fig = pl.figure(3, figsize=(16, 12))
@@ -428,6 +429,7 @@ df_map = df_map.set_index(['STATE', 'COUNTY'])
 df_counties.join(df_map).fillna(0).plot(figsize=(20, 20), column='RATE',
                                         cmap='OrRd', legend=True, vmin=0.,
                                         linewidth=0.1, edgecolor='black')
+pl.savefig("SuicideRatePred_vs_county.png")
 if show_plots:
     pl.show()
 else:
