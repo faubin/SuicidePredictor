@@ -4,6 +4,7 @@ A model to predict suicide rates from people's environmental, bahavioral, and he
 
 <p align='center'>
 <img src='SuicidePred_model.png' width='650'>
+<img src='SuicideRatePred_vs_county.png' width='650'>
 </p>
 
 
