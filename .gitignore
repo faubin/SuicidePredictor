@@ -107,3 +107,4 @@ venv.bak/
 downloads/
 data_county_map.pkl
 model_data.pkl
+downloaded.txt
